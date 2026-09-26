@@ -1,0 +1,58 @@
+schema: spec-driven
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+context: |
+  Tech stack: Go, Redis
+  We follow (https://google.github.io/styleguide/go/) style guide
+  Domain: AI-powered recommendation system
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+rules:
+  proposal:
+    - Keep proposals under 500 words
+    - Always include a "Non-goals" section
+  tasks:
+    - Break tasks into chunks of max 2 hours
+    - Use clear and descriptive names for each task
+  spec:
+    - Use a Given-When-Then format for test case descriptions
+    - Include a "Test Cases" section with at least 3 test cases
+    - Use clear and descriptive names for each test case
+    - Ensure that test cases cover both positive and negative scenarios
+    - Use consistent formatting for test case steps and expected results
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
+operations:
+  apply:
+    guidance:
+      - Keep test summaries concise
+      - Include a summary of the changes made in the apply operation
+  archive:
+    guidance:
+      - Summarize the archive outcome before finishing
+      - Include any lessons learned or recommendations for future work

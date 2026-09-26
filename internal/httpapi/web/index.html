@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pagos por minuto</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --processed: #2a78d6;
+    --failed: #d03b3b;
+    --error-bg: #fdecec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --grid: #2c2c2a;
+      --axis: #383835;
+      --border: rgba(255, 255, 255, 0.10);
+      --processed: #3987e5;
+      --error-bg: #3a1c1c;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --processed: #3987e5;
+    --error-bg: #3a1c1c;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; margin-bottom: 16px; }
+  h1 { font-size: 20px; font-weight: 600; margin: 0; }
+  .status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--ink-2); font-size: 13px; }
+  .badge {
+    display: none; align-items: center; gap: 6px;
+    padding: 2px 8px; border-radius: 999px;
+    background: var(--error-bg); color: var(--ink); font-weight: 500;
+  }
+  .badge.on { display: inline-flex; }
+  .badge .icon { color: var(--failed); font-weight: 700; }
+
+  .filters { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; color: var(--ink-2); }
+  select {
+    font: inherit; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px;
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 12px; }
+  .tile .label { display: flex; align-items: center; gap: 6px; color: var(--ink-2); }
+  .tile .value { font-size: 28px; font-weight: 600; margin-top: 4px; }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+  .swatch.processed { background: var(--processed); }
+  .swatch.failed { background: var(--failed); }
+
+  .chart-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .chart-head h2 { font-size: 15px; font-weight: 600; margin: 0; }
+  .legend { display: flex; gap: 16px; color: var(--ink-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .chart { position: relative; }
+  .chart svg { display: block; width: 100%; height: 260px; overflow: visible; }
+  .chart svg:focus-visible { outline: 2px solid var(--processed); outline-offset: 4px; border-radius: 4px; }
+  .stale { opacity: 0.5; transition: opacity 0.2s; }
+  .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .grid { stroke: var(--grid); stroke-width: 1; shape-rendering: crispEdges; }
+  .baseline { stroke: var(--axis); stroke-width: 1; shape-rendering: crispEdges; }
+  .seg-processed { fill: var(--processed); }
+  .seg-failed { fill: var(--failed); }
+  .col.active .seg { filter: brightness(1.15); }
+  .hover-band { fill: var(--ink); opacity: 0; }
+  .col.active .hover-band { opacity: 0.04; }
+
+  .tooltip {
+    position: absolute; pointer-events: none; display: none; min-width: 150px;
+    background: var(--surface); color: var(--ink); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); font-size: 12px;
+  }
+  .tooltip .when { color: var(--ink-2); margin-bottom: 4px; }
+  .tooltip .row { display: flex; align-items: center; gap: 8px; }
+  .tooltip .key { width: 12px; height: 2px; border-radius: 1px; }
+  .tooltip strong { font-size: 14px; min-width: 2ch; }
+  .tooltip .name { color: var(--ink-2); }
+
+  details { margin-top: 12px; }
+  summary { cursor: pointer; color: var(--ink-2); }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--grid); }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--ink-2); font-weight: 500; }
+  .empty { color: var(--muted); padding: 24px 0; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Pagos por minuto</h1>
+    <div class="status" role="status" aria-live="polite">
+      <span id="updated">Cargando…</span>
+      <span id="error" class="badge"><span class="icon" aria-hidden="true">!</span><span>Sin conexión con el servidor, reintentando</span></span>
+    </div>
+  </header>
+
+  <div class="filters">
+    <label for="range">Rango</label>
+    <select id="range">
+      <option value="5">Últimos 5 min</option>
+      <option value="15" selected>Últimos 15 min</option>
+      <option value="30">Últimos 30 min</option>
+      <option value="60">Últimos 60 min</option>
+    </select>
+  </div>
+
+  <div id="content">
+    <section class="tiles" aria-label="Totales">
+      <div class="card tile">
+        <div class="label"><span class="swatch processed"></span><span aria-hidden="true">✓</span> Exitosos</div>
+        <div class="value" id="total-processed">–</div>
+      </div>
+      <div class="card tile">
+        <div class="label"><span class="swatch failed"></span><span aria-hidden="true">✕</span> Fallidos</div>
+        <div class="value" id="total-failed">–</div>
+      </div>
+      <div class="card tile">
+        <div class="label">Tasa de fallo</div>
+        <div class="value" id="failure-rate">–</div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="chart-title">
+      <div class="chart-head">
+        <h2 id="chart-title">Pagos por minuto (hora local)</h2>
+        <div class="legend">
+          <span><span class="swatch processed"></span>✓ Exitosos</span>
+          <span><span class="swatch failed"></span>✕ Fallidos</span>
+        </div>
+      </div>
+      <div class="chart" id="chart">
+        <svg id="svg" tabindex="0" role="img" aria-label="Columnas apiladas de pagos exitosos y fallidos por minuto. Usa las flechas para recorrer los minutos."></svg>
+        <div class="tooltip" id="tooltip" aria-hidden="true"></div>
+      </div>
+      <details>
+        <summary>Ver como tabla</summary>
+        <table>
+          <thead><tr><th scope="col">Minuto</th><th scope="col">Exitosos</th><th scope="col">Fallidos</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </details>
+    </section>
+  </div>
+</main>
+
+<script>
+(() => {
+  const REFRESH_MS = 2000;
+  const STATS_URL = "/api/stats";
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  const PAD = { top: 12, right: 8, bottom: 28, left: 36 };
+  const CHART_HEIGHT = 260;
+
+  const el = (id) => document.getElementById(id);
+  const svg = el("svg");
+  const tooltip = el("tooltip");
+  const rangeSelect = el("range");
+  const fmtNum = new Intl.NumberFormat("es");
+  const fmtPct = new Intl.NumberFormat("es", { style: "percent", maximumFractionDigits: 1 });
+  const fmtMinute = new Intl.DateTimeFormat("es", { hour: "2-digit", minute: "2-digit" });
+  const fmtClock = new Intl.DateTimeFormat("es", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+  let data = null;
+  let active = -1;
+  let timer = 0;
+
+  try {
+    const saved = localStorage.getItem("dashboard.minutes");
+    if (saved && [...rangeSelect.options].some((o) => o.value === saved)) rangeSelect.value = saved;
+  } catch (_) { /* Storage unavailable; keep the default. */ }
+
+  rangeSelect.addEventListener("change", () => {
+    try { localStorage.setItem("dashboard.minutes", rangeSelect.value); } catch (_) {}
+    clearTimeout(timer);
+    poll();
+  });
+
+  async function poll() {
+    try {
+      const res = await fetch(`${STATS_URL}?minutes=${encodeURIComponent(rangeSelect.value)}`, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(REFRESH_MS * 2),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      data = await res.json();
+      setError(false);
+      render();
+    } catch (err) {
+      setError(true);
+    } finally {
+      clearTimeout(timer);
+      timer = setTimeout(poll, REFRESH_MS);
+    }
+  }
+
+  function setError(on) {
+    el("error").classList.toggle("on", on);
+    // Keep the last render visible but faded while the backend is unreachable.
+    el("content").classList.toggle("stale", on && data !== null);
+    if (on && data === null) el("updated").textContent = "Sin datos todavía";
+  }
+
+  function render() {
+    const { minutes, totals, generated_at: generatedAt } = data;
+    el("updated").textContent = `Actualizado ${fmtClock.format(new Date(generatedAt))}`;
+    el("total-processed").textContent = fmtNum.format(totals.processed);
+    el("total-failed").textContent = fmtNum.format(totals.failed);
+    const all = totals.processed + totals.failed;
+    el("failure-rate").textContent = all === 0 ? "–" : fmtPct.format(totals.failed / all);
+    renderTable(minutes);
+    renderChart(minutes);
+  }
+
+  function renderTable(minutes) {
+    const body = el("rows");
+    body.replaceChildren();
+    for (const m of [...minutes].reverse()) {
+      const tr = document.createElement("tr");
+      for (const v of [fmtMinute.format(new Date(m.minute)), fmtNum.format(m.processed), fmtNum.format(m.failed)]) {
+        const td = document.createElement("td");
+        td.textContent = v;
+        tr.append(td);
+      }
+      body.append(tr);
+    }
+  }
+
+  function niceMax(v) {
+    if (v <= 4) return 4;
+    const mag = 10 ** Math.floor(Math.log10(v));
+    for (const step of [1, 2, 2.5, 5, 10]) {
+      if (step * mag >= v) return step * mag;
+    }
+    return 10 * mag;
+  }
+
+  function node(name, attrs, parent) {
+    const n = document.createElementNS(SVG_NS, name);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    if (parent) parent.append(n);
+    return n;
+  }
+
+  // Path for a column segment; only the top corners are rounded when requested.
+  function segPath(x, y, w, h, r) {
+    r = Math.min(r, w / 2, h);
+    if (r <= 0) return `M${x},${y}h${w}v${h}h${-w}Z`;
+    return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+  }
+
+  function renderChart(minutes) {
+    const width = svg.clientWidth || 600;
+    const height = CHART_HEIGHT;
+    const pad = PAD;
+    const plotW = width - pad.left - pad.right;
+    const plotH = height - pad.top - pad.bottom;
+    const n = minutes.length;
+    const maxTotal = Math.max(0, ...minutes.map((m) => m.processed + m.failed));
+    const yMax = niceMax(maxTotal);
+    const y = (v) => pad.top + plotH - (v / yMax) * plotH;
+
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    svg.replaceChildren();
+
+    for (let i = 0; i <= 4; i++) {
+      const v = (yMax / 4) * i;
+      const yy = Math.round(y(v)) + 0.5;
+      node("line", { class: i === 0 ? "baseline" : "grid", x1: pad.left, x2: width - pad.right, y1: yy, y2: yy }, svg);
+      const t = node("text", { class: "tick", x: pad.left - 6, y: yy + 4, "text-anchor": "end" }, svg);
+      t.textContent = fmtNum.format(Math.round(v * 10) / 10);
+    }
+
+    const slot = plotW / Math.max(n, 1);
+    const barW = Math.max(2, Math.min(24, slot * 0.62));
+    const labelEvery = Math.max(1, Math.ceil(44 / slot));
+    const GAP = 2;
+
+    minutes.forEach((m, i) => {
+      const cx = pad.left + slot * i + slot / 2;
+      const g = node("g", { class: "col", "data-index": i }, svg);
+      node("rect", { class: "hover-band", x: cx - slot / 2, y: pad.top, width: slot, height: plotH }, g);
+
+      const hp = (m.processed / yMax) * plotH;
+      const hf = (m.failed / yMax) * plotH;
+      const base = pad.top + plotH;
+      const x = cx - barW / 2;
+      if (hp > 0) {
+        node("path", { class: "seg seg-processed", d: segPath(x, base - hp, barW, hp, hf > 0 ? 0 : 4) }, g);
+      }
+      if (hf > 0) {
+        const gap = hp > 0 ? GAP : 0;
+        const h = Math.max(2, hf - gap);
+        node("path", { class: "seg seg-failed", d: segPath(x, base - hp - gap - h, barW, h, 4) }, g);
+      }
+
+      if (i % labelEvery === 0 || i === n - 1) {
+        if (i === n - 1 || n - 1 - i >= labelEvery) {
+          const t = node("text", { class: "tick", x: cx, y: height - 8, "text-anchor": "middle" }, svg);
+          t.textContent = fmtMinute.format(new Date(m.minute));
+        }
+      }
+
+      // Hit target spans the whole slot and plot height, not just the painted bar.
+      const hit = node("rect", { x: cx - slot / 2, y: pad.top, width: slot, height: plotH, fill: "transparent" }, g);
+      hit.addEventListener("pointerenter", () => setActive(i));
+      hit.addEventListener("pointermove", () => setActive(i));
+    });
+
+    if (maxTotal === 0) {
+      const t = node("text", { class: "tick", x: pad.left + plotW / 2, y: pad.top + plotH / 2, "text-anchor": "middle" }, svg);
+      t.textContent = "Sin pagos en este rango";
+    }
+
+    if (active >= n) active = n - 1;
+    if (active >= 0) setActive(active);
+  }
+
+  function setActive(i) {
+    active = i;
+    svg.querySelectorAll(".col").forEach((g) => g.classList.toggle("active", Number(g.dataset.index) === i));
+    if (!data || i < 0) { tooltip.style.display = "none"; return; }
+    const m = data.minutes[i];
+
+    tooltip.replaceChildren();
+    const when = document.createElement("div");
+    when.className = "when";
+    when.textContent = fmtMinute.format(new Date(m.minute));
+    tooltip.append(when);
+    for (const [name, value, color] of [["Exitosos", m.processed, "var(--processed)"], ["Fallidos", m.failed, "var(--failed)"]]) {
+      const row = document.createElement("div");
+      row.className = "row";
+      const key = document.createElement("span");
+      key.className = "key";
+      key.style.background = color;
+      const strong = document.createElement("strong");
+      strong.textContent = fmtNum.format(value);
+      const label = document.createElement("span");
+      label.className = "name";
+      label.textContent = name;
+      row.append(key, strong, label);
+      tooltip.append(row);
+    }
+
+    const box = svg.getBoundingClientRect();
+    const slot = (box.width - PAD.left - PAD.right) / data.minutes.length;
+    const cx = PAD.left + slot * i + slot / 2;
+    tooltip.style.display = "block";
+    const tw = tooltip.offsetWidth;
+    const left = cx + 12 + tw > box.width ? cx - 12 - tw : cx + 12;
+    tooltip.style.left = `${Math.max(0, left)}px`;
+    tooltip.style.top = "8px";
+  }
+
+  function clearActive() {
+    active = -1;
+    svg.querySelectorAll(".col.active").forEach((g) => g.classList.remove("active"));
+    tooltip.style.display = "none";
+  }
+
+  svg.addEventListener("pointerleave", clearActive);
+  svg.addEventListener("blur", clearActive);
+  svg.addEventListener("focus", () => { if (data && active < 0) setActive(data.minutes.length - 1); });
+  svg.addEventListener("keydown", (e) => {
+    if (!data) return;
+    const last = data.minutes.length - 1;
+    const next = { ArrowLeft: active - 1, ArrowRight: active + 1, Home: 0, End: last }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    setActive(Math.max(0, Math.min(last, next)));
+  });
+
+  let resizeFrame = 0;
+  window.addEventListener("resize", () => {
+    cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(() => { if (data) renderChart(data.minutes); });
+  });
+
+  poll();
+})();
+</script>
+</body>
+</html>
