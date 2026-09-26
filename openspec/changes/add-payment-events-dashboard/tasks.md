@@ -34,7 +34,7 @@
 
 ## 8. Simulador de eventos
 
-- [ ] 8.1 Implementar `simulator.Run(ctx, q, rate, failureRatio)`, que publica eventos aleatorios y registra en log los rechazos por cola llena; verificar con un test que, con un rate alto y un ctx corto, publica eventos de ambos tipos
+- [x] 8.1 Implementar `simulator.Run(ctx, q, rate, failureRatio)`, que publica eventos aleatorios y registra en log los rechazos por cola llena; verificar con un test que, con un rate alto y un ctx corto, publica eventos de ambos tipos
 
 ## 9. Wiring, documentación e integración
 
