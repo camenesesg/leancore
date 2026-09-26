@@ -38,6 +38,6 @@
 
 ## 9. Wiring, documentación e integración
 
-- [ ] 9.1 Conectar todo en `cmd/dashboard/main.go` (flags `-addr`, `-queue-size`, `-retention`, `-simulate`, `-simulate-rate`, `-simulate-failure-ratio`; `slog`; `signal.NotifyContext`; secuencia de apagado del design); verificar que `go run ./cmd/dashboard -simulate` arranca y que Ctrl+C termina limpio
-- [ ] 9.2 Escribir el `README.md` con cómo ejecutar, ejemplos de `curl` para publicar eventos y consultar stats, y la nota de que no hay autenticación; verificar ejecutando los comandos tal como están escritos
-- [ ] 9.3 Escribir un test end-to-end (servidor `httptest` + cola + consumidor reales): publicar N eventos procesados y M fallidos y verificar que `/api/stats` refleja N/M en menos de 1 s; verificar que `go test -race ./...` y `go vet ./...` pasan
+- [x] 9.1 Conectar todo en `cmd/dashboard/main.go` (flags `-addr`, `-queue-size`, `-retention`, `-simulate`, `-simulate-rate`, `-simulate-failure-ratio`; `slog`; `signal.NotifyContext`; secuencia de apagado del design); verificar que `go run ./cmd/dashboard -simulate` arranca y que Ctrl+C termina limpio
+- [x] 9.2 Escribir el `README.md` con cómo ejecutar, ejemplos de `curl` para publicar eventos y consultar stats, y la nota de que no hay autenticación; verificar ejecutando los comandos tal como están escritos
+- [x] 9.3 Escribir un test end-to-end (servidor `httptest` + cola + consumidor reales): publicar N eventos procesados y M fallidos y verificar que `/api/stats` refleja N/M en menos de 1 s; verificar que `go test -race ./...` y `go vet ./...` pasan
